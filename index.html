@@ -89,28 +89,41 @@
             justify-content: space-between;
             gap: 1.5rem;
             width: 100%;
-            align-items: flex-end;
+            align-items: center;
             flex-wrap: wrap;
             padding: 0 0.5rem;
         }
         .touch-fire {
             display: flex;
             align-items: center;
+            flex: 0 0 auto;
         }
-        .touch-dpad {
-            display: grid;
-            grid-template-columns: repeat(3, 84px);
-            grid-template-rows: repeat(3, 84px);
-            gap: 0.4rem;
-            justify-content: center;
-            align-content: center;
+        .touch-joystick {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            flex: 0 0 auto;
             margin-left: auto;
+            touch-action: none;
         }
-        .touch-dpad .spacer {
-            width: 84px;
-            height: 84px;
+        .joystick-base {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .joystick-thumb {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: rgba(44,123,229,0.35);
+            box-shadow: 0 8px 18px rgba(44,123,229,0.35);
+            transition: transform 0.06s ease;
             pointer-events: none;
-            visibility: hidden;
         }
         .touch-btn {
             width: 84px;
@@ -173,17 +186,11 @@
                 gap: 1rem;
             }
             .touch-fire {
-                flex: 1;
-                justify-content: flex-start;
+                flex: 0 0 auto;
             }
-            .touch-dpad {
-                grid-template-columns: repeat(3, 72px);
-                grid-template-rows: repeat(3, 72px);
-                gap: 0.35rem;
-            }
-            .touch-dpad .spacer {
-                width: 72px;
-                height: 72px;
+            .touch-joystick {
+                width: 180px;
+                height: 180px;
             }
             .touch-btn {
                 width: 72px;
@@ -195,6 +202,10 @@
                 width: 88px;
                 height: 160px;
                 border-radius: 28px;
+            }
+            .joystick-thumb {
+                width: 90px;
+                height: 90px;
             }
             .pause-btn {
                 width: 100%;
@@ -215,13 +226,14 @@
 <body>
     <header>
         <h1>Space Brownian Battle</h1>
-        <p>Use as setas do teclado ou o direcional à direita para mover a nave; a barra de espaço ou o botão Atirar dispara. Toque em Pausar para interromper e retomar a partida. Derrube as 5 naves inimigas antes de sofrer 3 colisões.</p>
+        <p>Use as setas do teclado ou arraste o joystick à direita para mover a nave; a barra de espaço ou o botão Atirar dispara. Toque em Pausar para interromper e retomar a partida. Derrube as 5 naves inimigas antes de sofrer 3 colisões.</p>
     </header>
 
     <section class="hud">
         <div class="panel">
-            <div><strong>Pontos:</strong> <span id="score">0</span> / 5</div>
-            <div><strong>Colisões sofridas:</strong> <span id="hits">0</span> / 3</div>
+            <div><strong>Vidas restantes:</strong> <span id="lives">3</span></div>
+            <div><strong>Inimigos restantes:</strong> <span id="enemiesRemaining">5</span></div>
+            <div><strong>Naves abatidas:</strong> <span id="score">0</span> / 5</div>
         </div>
         <div class="panel">
             <label>
@@ -244,16 +256,10 @@
             <div class="touch-fire">
                 <button type="button" class="touch-btn fire" data-key="Space" aria-label="Atirar">Atirar</button>
             </div>
-            <div class="touch-dpad">
-                <div class="spacer" aria-hidden="true"></div>
-                <button type="button" class="touch-btn" data-key="ArrowUp" aria-label="Mover para cima">&#9650;</button>
-                <div class="spacer" aria-hidden="true"></div>
-                <button type="button" class="touch-btn" data-key="ArrowLeft" aria-label="Mover para a esquerda">&#9664;</button>
-                <div class="spacer" aria-hidden="true"></div>
-                <button type="button" class="touch-btn" data-key="ArrowRight" aria-label="Mover para a direita">&#9654;</button>
-                <div class="spacer" aria-hidden="true"></div>
-                <button type="button" class="touch-btn" data-key="ArrowDown" aria-label="Mover para baixo">&#9660;</button>
-                <div class="spacer" aria-hidden="true"></div>
+            <div class="touch-joystick" id="touchJoystick" aria-label="Direcional por arrasto">
+                <div class="joystick-base">
+                    <div class="joystick-thumb" id="joystickThumb"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -268,13 +274,16 @@
         const ctx = canvas.getContext("2d");
 
         const scoreEl = document.getElementById("score");
-        const hitsEl = document.getElementById("hits");
+        const livesEl = document.getElementById("lives");
+        const enemiesRemainingEl = document.getElementById("enemiesRemaining");
         const statusEl = document.getElementById("status");
         const bulletSpeedSlider = document.getElementById("bulletSpeed");
         const bulletSpeedValue = document.getElementById("bulletSpeedValue");
         const inertiaSlider = document.getElementById("inertia");
         const inertiaValue = document.getElementById("inertiaValue");
         const pauseToggle = document.getElementById("pauseToggle");
+        const joystick = document.getElementById("touchJoystick");
+        const joystickThumb = document.getElementById("joystickThumb");
 
         const GAME_WIDTH = canvas.width;
         const GAME_HEIGHT = canvas.height;
@@ -291,10 +300,40 @@
         const SHOOT_COOLDOWN = 180; // ms
 
         const PLAYER_INVULNERABLE_TIME = 1200; // ms after hit
+        const MAX_LIVES = 3;
 
         const keysDown = new Set();
         const touchControls = document.getElementById("touchControls");
         const activeTouchPointers = new Map();
+        const touchMovement = {
+            active: false,
+            pointerId: null,
+            x: 0,
+            y: 0
+        };
+
+        function moveJoystickThumb(renderX = 0, renderY = 0) {
+            if (!joystickThumb) {
+                return;
+            }
+            joystickThumb.style.transform = `translate(${renderX}px, ${renderY}px)`;
+        }
+
+        function resetTouchMovement() {
+            if (touchMovement.pointerId !== null && joystick && joystick.releasePointerCapture) {
+                try {
+                    joystick.releasePointerCapture(touchMovement.pointerId);
+                } catch (_) {
+                    // ignore pointer capture release errors
+                }
+            }
+            touchMovement.active = false;
+            touchMovement.pointerId = null;
+            touchMovement.x = 0;
+            touchMovement.y = 0;
+            moveJoystickThumb(0, 0);
+        }
+
         const state = {
             player: null,
             bullets: [],
@@ -381,6 +420,89 @@
             window.addEventListener("pointercancel", handleRelease);
         }
 
+        if (joystick) {
+            const DEAD_ZONE_RATIO = 0.18;
+
+            const updateMovementFromPointer = (event) => {
+                const rect = joystick.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const dx = event.clientX - centerX;
+                const dy = event.clientY - centerY;
+                const distance = Math.hypot(dx, dy);
+                const radius = rect.width / 2;
+                const deadZone = radius * DEAD_ZONE_RATIO;
+
+                if (distance <= deadZone) {
+                    touchMovement.x = 0;
+                    touchMovement.y = 0;
+                    touchMovement.active = false;
+                    moveJoystickThumb(0, 0);
+                    return;
+                }
+
+                const normX = dx / distance;
+                const normY = dy / distance;
+                touchMovement.x = normX;
+                touchMovement.y = normY;
+                touchMovement.active = true;
+
+                const thumbRadius = (joystickThumb ? joystickThumb.clientWidth : rect.width) / 2;
+                const maxTravel = Math.max(radius - thumbRadius, 0);
+                const limitedDistance = Math.min(distance - deadZone, radius - deadZone);
+                const travelRatio = radius > deadZone ? limitedDistance / (radius - deadZone) : 0;
+                const renderDistance = travelRatio * maxTravel;
+                moveJoystickThumb(normX * renderDistance, normY * renderDistance);
+            };
+
+            const releaseMovement = (event) => {
+                if (touchMovement.pointerId !== event.pointerId) {
+                    return;
+                }
+                resetTouchMovement();
+            };
+
+            joystick.addEventListener("pointerdown", (event) => {
+                if (event.pointerType !== "mouse") {
+                    event.preventDefault();
+                }
+                if (state.paused || !state.running) {
+                    return;
+                }
+                if (touchMovement.pointerId !== null && touchMovement.pointerId !== event.pointerId) {
+                    resetTouchMovement();
+                }
+                touchMovement.pointerId = event.pointerId;
+                if (joystick.setPointerCapture) {
+                    try {
+                        joystick.setPointerCapture(event.pointerId);
+                    } catch (_) {
+                        // ignore
+                    }
+                }
+                updateMovementFromPointer(event);
+            });
+
+            joystick.addEventListener("pointermove", (event) => {
+                if (touchMovement.pointerId !== event.pointerId) {
+                    return;
+                }
+                updateMovementFromPointer(event);
+            });
+
+            joystick.addEventListener("pointerup", releaseMovement);
+            joystick.addEventListener("pointercancel", releaseMovement);
+            joystick.addEventListener("lostpointercapture", releaseMovement);
+            joystick.addEventListener("pointerleave", (event) => {
+                if (touchMovement.pointerId !== event.pointerId) {
+                    return;
+                }
+                releaseMovement(event);
+            });
+            window.addEventListener("pointerup", releaseMovement);
+            window.addEventListener("pointercancel", releaseMovement);
+        }
+
         function clamp(value, min, max) {
             return Math.max(min, Math.min(max, value));
         }
@@ -429,6 +551,7 @@
             state.running = true;
             state.pendingReset = false;
             state.paused = false;
+            resetTouchMovement();
             updatePauseButton();
             updateScore();
             setStatus(message);
@@ -442,7 +565,14 @@
 
         function updateScore() {
             scoreEl.textContent = state.score;
-            hitsEl.textContent = state.hits;
+            if (livesEl) {
+                const livesRemaining = Math.max(0, MAX_LIVES - state.hits);
+                livesEl.textContent = livesRemaining;
+            }
+            if (enemiesRemainingEl) {
+                const remaining = Math.max(0, ENEMY_COUNT - state.score);
+                enemiesRemainingEl.textContent = remaining;
+            }
         }
 
         function setStatus(message, duration = 2000) {
@@ -477,6 +607,7 @@
                     }
                 });
                 activeTouchPointers.clear();
+                resetTouchMovement();
                 setStatus("Jogo pausado", Number.POSITIVE_INFINITY);
             } else {
                 state.lastFrame = null;
@@ -507,6 +638,10 @@
             if (keysDown.has("ArrowRight")) moveX += 1;
             if (keysDown.has("ArrowUp")) moveY -= 1;
             if (keysDown.has("ArrowDown")) moveY += 1;
+            if (touchMovement.active) {
+                moveX += touchMovement.x;
+                moveY += touchMovement.y;
+            }
 
             if (moveX !== 0 || moveY !== 0) {
                 const mag = Math.hypot(moveX, moveY);
@@ -637,7 +772,7 @@
                     state.player.invulnerable = PLAYER_INVULNERABLE_TIME;
                     updateScore();
                     setStatus("Colisão! Cuidado...", 1000);
-                    if (state.hits >= 3) {
+                    if (state.hits >= MAX_LIVES) {
                         endGame(false);
                     }
                     break;
@@ -647,6 +782,7 @@
 
         function endGame(win) {
             state.running = false;
+            resetTouchMovement();
             if (win) {
                 setStatus("Você venceu! Reiniciando...", 1800);
             } else {
