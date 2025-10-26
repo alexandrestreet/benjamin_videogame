@@ -1,7 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <title>Space Brownian Battle</title>
     <style>
         :root {
@@ -12,6 +14,10 @@
             --accent: #2c7be5;
             --danger: #ff6b6b;
             --success: #51cf66;
+        }
+        html {
+            width: 100%;
+            overflow-x: hidden;
         }
         body {
             margin: 0;
@@ -24,6 +30,11 @@
             min-height: 100vh;
             padding: 1.5rem;
             box-sizing: border-box;
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
         header, footer {
             max-width: 900px;
@@ -75,6 +86,153 @@
             font-weight: 600;
             letter-spacing: 0.05em;
         }
+        .touch-ui {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 1.25rem;
+            width: 100%;
+            max-width: 900px;
+        }
+        .touch-controls {
+            display: flex;
+            justify-content: space-between;
+            gap: 1.5rem;
+            width: 100%;
+            align-items: center;
+            flex-wrap: wrap;
+            padding: 0 0.5rem;
+        }
+        .touch-fire {
+            display: flex;
+            align-items: center;
+            flex: 0 0 auto;
+        }
+        .touch-joystick {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            flex: 0 0 auto;
+            margin-left: auto;
+            touch-action: none;
+        }
+        .joystick-base {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .joystick-thumb {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: rgba(44,123,229,0.35);
+            box-shadow: 0 8px 18px rgba(44,123,229,0.35);
+            transition: transform 0.06s ease;
+            pointer-events: none;
+        }
+        .touch-btn {
+            width: 84px;
+            height: 84px;
+            border-radius: 20px;
+            border: none;
+            background: rgba(255,255,255,0.12);
+            color: var(--text);
+            font-size: 1.2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+            backdrop-filter: blur(4px);
+            touch-action: manipulation;
+            user-select: none;
+            cursor: pointer;
+            transition: transform 0.08s ease, background 0.12s ease;
+        }
+        .touch-btn.fire {
+            background: linear-gradient(180deg, rgba(255,107,107,0.4), rgba(255,107,107,0.1));
+            color: var(--danger);
+            width: 96px;
+            height: 184px;
+            border-radius: 32px;
+        }
+        .touch-btn .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+        .touch-btn:active,
+        .touch-btn.active {
+            transform: translateY(2px);
+            background: rgba(255,255,255,0.28);
+        }
+        .pause-btn {
+            align-self: flex-end;
+            padding: 0.6rem 1.2rem;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 999px;
+            color: var(--text);
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: background 0.12s ease, transform 0.08s ease;
+        }
+        .pause-btn:active {
+            transform: translateY(2px);
+            background: rgba(255,255,255,0.28);
+        }
+        .pause-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            .touch-controls {
+                gap: 1rem;
+            }
+            .touch-fire {
+                flex: 0 0 auto;
+            }
+            .touch-joystick {
+                width: 180px;
+                height: 180px;
+            }
+            .touch-btn {
+                width: 72px;
+                height: 72px;
+                border-radius: 18px;
+                font-size: 1.1rem;
+            }
+            .touch-btn.fire {
+                width: 88px;
+                height: 160px;
+                border-radius: 28px;
+            }
+            .joystick-thumb {
+                width: 90px;
+                height: 90px;
+            }
+            .pause-btn {
+                width: 100%;
+                text-align: center;
+                align-self: center;
+            }
+        }
         footer {
             margin-top: 2rem;
             font-size: 0.9rem;
@@ -88,13 +246,14 @@
 <body>
     <header>
         <h1>Space Brownian Battle</h1>
-        <p>Use as setas para mover a nave; a barra de espaço dispara. Derrube as 5 naves inimigas antes de sofrer 3 colisões.</p>
+        <p>Use as setas do teclado ou arraste o joystick à direita para mover a nave; a barra de espaço ou o botão Atirar dispara. Ajuste a inércia e a atração inimiga nos controles para moldar o comportamento das naves adversárias. Derrube as 5 naves inimigas antes de sofrer 3 colisões.</p>
     </header>
 
     <section class="hud">
         <div class="panel">
-            <div><strong>Pontos:</strong> <span id="score">0</span> / 5</div>
-            <div><strong>Colisões sofridas:</strong> <span id="hits">0</span> / 3</div>
+            <div><strong>Vidas restantes:</strong> <span id="lives">3</span></div>
+            <div><strong>Inimigos restantes:</strong> <span id="enemiesRemaining">5</span></div>
+            <div><strong>Naves abatidas:</strong> <span id="score">0</span> / 5</div>
         </div>
         <div class="panel">
             <label>
@@ -107,10 +266,30 @@
                 <input type="range" id="inertia" min="0" max="1" step="0.05" value="0.8">
                 <span id="inertiaValue">0.80</span>
             </label>
+            <label>
+                Atração inimiga
+                <input type="range" id="attraction" min="0" max="1" step="0.05" value="0">
+                <span id="attractionValue">0.00</span>
+            </label>
         </div>
     </section>
 
     <canvas id="game" width="800" height="600"></canvas>
+    <div class="touch-ui">
+        <button type="button" class="pause-btn" id="pauseToggle" aria-pressed="false">Pausar</button>
+        <div class="touch-controls" id="touchControls">
+            <div class="touch-fire">
+                <button type="button" class="touch-btn fire" data-key="Space" aria-label="Atirar">
+                    <span class="sr-only">Atirar</span>
+                </button>
+            </div>
+            <div class="touch-joystick" id="touchJoystick" aria-label="Direcional por arrasto">
+                <div class="joystick-base">
+                    <div class="joystick-thumb" id="joystickThumb"></div>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="status" id="status"></div>
 
     <footer>
@@ -122,12 +301,18 @@
         const ctx = canvas.getContext("2d");
 
         const scoreEl = document.getElementById("score");
-        const hitsEl = document.getElementById("hits");
+        const livesEl = document.getElementById("lives");
+        const enemiesRemainingEl = document.getElementById("enemiesRemaining");
         const statusEl = document.getElementById("status");
         const bulletSpeedSlider = document.getElementById("bulletSpeed");
         const bulletSpeedValue = document.getElementById("bulletSpeedValue");
         const inertiaSlider = document.getElementById("inertia");
         const inertiaValue = document.getElementById("inertiaValue");
+        const attractionSlider = document.getElementById("attraction");
+        const attractionValue = document.getElementById("attractionValue");
+        const pauseToggle = document.getElementById("pauseToggle");
+        const joystick = document.getElementById("touchJoystick");
+        const joystickThumb = document.getElementById("joystickThumb");
 
         const GAME_WIDTH = canvas.width;
         const GAME_HEIGHT = canvas.height;
@@ -139,13 +324,45 @@
         const ENEMY_COUNT = 5;
         const ENEMY_RADIUS = 20;
         const ENEMY_BASE_SPEED = 120;
+        const AIM_LERP_RATE = 14;
 
         const BULLET_RADIUS = 4;
         const SHOOT_COOLDOWN = 180; // ms
 
         const PLAYER_INVULNERABLE_TIME = 1200; // ms after hit
+        const MAX_LIVES = 3;
 
         const keysDown = new Set();
+        const touchControls = document.getElementById("touchControls");
+        const activeTouchPointers = new Map();
+        const touchMovement = {
+            active: false,
+            pointerId: null,
+            x: 0,
+            y: 0
+        };
+
+        function moveJoystickThumb(renderX = 0, renderY = 0) {
+            if (!joystickThumb) {
+                return;
+            }
+            joystickThumb.style.transform = `translate(${renderX}px, ${renderY}px)`;
+        }
+
+        function resetTouchMovement() {
+            if (touchMovement.pointerId !== null && joystick && joystick.releasePointerCapture) {
+                try {
+                    joystick.releasePointerCapture(touchMovement.pointerId);
+                } catch (_) {
+                    // ignore pointer capture release errors
+                }
+            }
+            touchMovement.active = false;
+            touchMovement.pointerId = null;
+            touchMovement.x = 0;
+            touchMovement.y = 0;
+            moveJoystickThumb(0, 0);
+        }
 
         const state = {
             player: null,
@@ -158,8 +375,163 @@
             statusTimer: 0,
             statusMessage: "",
             running: true,
-            pendingReset: false
+            pendingReset: false,
+            paused: false
         };
+
+        function pressVirtualKey(key) {
+            if (state.paused || !state.running) {
+                return;
+            }
+            if (key === "Space") {
+                shoot();
+            } else {
+                keysDown.add(key);
+            }
+        }
+
+        function releaseVirtualKey(key) {
+            if (key !== "Space") {
+                keysDown.delete(key);
+            }
+        }
+
+        if (touchControls) {
+            const virtualButtons = Array.from(touchControls.querySelectorAll("[data-key]"));
+
+            const handleRelease = (event) => {
+                const active = activeTouchPointers.get(event.pointerId);
+                if (!active) {
+                    return;
+                }
+                releaseVirtualKey(active.key);
+                active.button.classList.remove("active");
+                activeTouchPointers.delete(event.pointerId);
+            };
+
+            virtualButtons.forEach((button) => {
+                const key = button.dataset.key;
+
+                button.addEventListener("pointerdown", (event) => {
+                    if (event.pointerType !== "mouse") {
+                        event.preventDefault();
+                    }
+                    if (state.paused || !state.running) {
+                        return;
+                    }
+                    if (button.setPointerCapture) {
+                        try {
+                            button.setPointerCapture(event.pointerId);
+                        } catch (_) {
+                            // Ignora capturas não suportadas.
+                        }
+                    }
+                    if (!activeTouchPointers.has(event.pointerId)) {
+                        activeTouchPointers.set(event.pointerId, { key, button });
+                        pressVirtualKey(key);
+                        button.classList.add("active");
+                    }
+                });
+
+                button.addEventListener("pointerup", handleRelease);
+                button.addEventListener("pointercancel", handleRelease);
+                button.addEventListener("lostpointercapture", handleRelease);
+                button.addEventListener("pointerleave", (event) => {
+                    if (button.hasPointerCapture && button.hasPointerCapture(event.pointerId)) {
+                        return;
+                    }
+                    handleRelease(event);
+                });
+                button.addEventListener("contextmenu", (event) => event.preventDefault());
+                button.addEventListener("click", (event) => event.preventDefault());
+            });
+
+            window.addEventListener("pointerup", handleRelease);
+            window.addEventListener("pointercancel", handleRelease);
+        }
+
+        if (joystick) {
+            const DEAD_ZONE_RATIO = 0.18;
+
+            const updateMovementFromPointer = (event) => {
+                const rect = joystick.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const dx = event.clientX - centerX;
+                const dy = event.clientY - centerY;
+                const distance = Math.hypot(dx, dy);
+                const radius = rect.width / 2;
+                const deadZone = radius * DEAD_ZONE_RATIO;
+
+                if (distance <= deadZone) {
+                    touchMovement.x = 0;
+                    touchMovement.y = 0;
+                    touchMovement.active = false;
+                    moveJoystickThumb(0, 0);
+                    return;
+                }
+
+                const normX = dx / distance;
+                const normY = dy / distance;
+                touchMovement.x = normX;
+                touchMovement.y = normY;
+                touchMovement.active = true;
+
+                const thumbRadius = (joystickThumb ? joystickThumb.clientWidth : rect.width) / 2;
+                const maxTravel = Math.max(radius - thumbRadius, 0);
+                const limitedDistance = Math.min(distance - deadZone, radius - deadZone);
+                const travelRatio = radius > deadZone ? limitedDistance / (radius - deadZone) : 0;
+                const renderDistance = travelRatio * maxTravel;
+                moveJoystickThumb(normX * renderDistance, normY * renderDistance);
+            };
+
+            const releaseMovement = (event) => {
+                if (touchMovement.pointerId !== event.pointerId) {
+                    return;
+                }
+                resetTouchMovement();
+            };
+
+            joystick.addEventListener("pointerdown", (event) => {
+                if (event.pointerType !== "mouse") {
+                    event.preventDefault();
+                }
+                if (state.paused || !state.running) {
+                    return;
+                }
+                if (touchMovement.pointerId !== null && touchMovement.pointerId !== event.pointerId) {
+                    resetTouchMovement();
+                }
+                touchMovement.pointerId = event.pointerId;
+                if (joystick.setPointerCapture) {
+                    try {
+                        joystick.setPointerCapture(event.pointerId);
+                    } catch (_) {
+                        // ignore
+                    }
+                }
+                updateMovementFromPointer(event);
+            });
+
+            joystick.addEventListener("pointermove", (event) => {
+                if (touchMovement.pointerId !== event.pointerId) {
+                    return;
+                }
+                updateMovementFromPointer(event);
+            });
+
+            joystick.addEventListener("pointerup", releaseMovement);
+            joystick.addEventListener("pointercancel", releaseMovement);
+            joystick.addEventListener("lostpointercapture", releaseMovement);
+            joystick.addEventListener("pointerleave", (event) => {
+                if (touchMovement.pointerId !== event.pointerId) {
+                    return;
+                }
+                releaseMovement(event);
+            });
+            window.addEventListener("pointerup", releaseMovement);
+            window.addEventListener("pointercancel", releaseMovement);
+        }
 
         function clamp(value, min, max) {
             return Math.max(min, Math.min(max, value));
@@ -208,6 +580,9 @@
             state.lastShotTime = 0;
             state.running = true;
             state.pendingReset = false;
+            state.paused = false;
+            resetTouchMovement();
+            updatePauseButton();
             updateScore();
             setStatus(message);
         }
@@ -220,13 +595,69 @@
 
         function updateScore() {
             scoreEl.textContent = state.score;
-            hitsEl.textContent = state.hits;
+            if (livesEl) {
+                const livesRemaining = Math.max(0, MAX_LIVES - state.hits);
+                livesEl.textContent = livesRemaining;
+            }
+            if (enemiesRemainingEl) {
+                const remaining = Math.max(0, ENEMY_COUNT - state.score);
+                enemiesRemainingEl.textContent = remaining;
+            }
         }
 
         function setStatus(message, duration = 2000) {
             state.statusMessage = message;
             state.statusTimer = duration;
             statusEl.textContent = message;
+        }
+
+        function updatePauseButton() {
+            if (!pauseToggle) {
+                return;
+            }
+            pauseToggle.textContent = state.paused ? "Retomar" : "Pausar";
+            pauseToggle.setAttribute("aria-pressed", state.paused ? "true" : "false");
+            pauseToggle.disabled = state.pendingReset;
+        }
+
+        function setPaused(paused) {
+            if (state.pendingReset) {
+                return;
+            }
+            if (state.paused === paused) {
+                return;
+            }
+            state.paused = paused;
+            if (paused) {
+                keysDown.clear();
+                activeTouchPointers.forEach(({ key, button }) => {
+                    releaseVirtualKey(key);
+                    if (button) {
+                        button.classList.remove("active");
+                    }
+                });
+                activeTouchPointers.clear();
+                resetTouchMovement();
+                setStatus("Jogo pausado", Number.POSITIVE_INFINITY);
+            } else {
+                state.lastFrame = null;
+                setStatus("Batalha retomada!", 800);
+            }
+            updatePauseButton();
+        }
+
+        function togglePause() {
+            if (!state.running && !state.paused) {
+                return;
+            }
+            setPaused(!state.paused);
+        }
+
+        if (pauseToggle) {
+            pauseToggle.addEventListener("click", (event) => {
+                event.preventDefault();
+                togglePause();
+            });
         }
 
         function handleInput(dt) {
@@ -237,17 +668,34 @@
             if (keysDown.has("ArrowRight")) moveX += 1;
             if (keysDown.has("ArrowUp")) moveY -= 1;
             if (keysDown.has("ArrowDown")) moveY += 1;
-
-            if (moveX !== 0 || moveY !== 0) {
-                const mag = Math.hypot(moveX, moveY);
-                moveX /= mag;
-                moveY /= mag;
-                state.player.facingX = moveX;
-                state.player.facingY = moveY;
+            if (touchMovement.active) {
+                moveX += touchMovement.x;
+                moveY += touchMovement.y;
             }
 
-            state.player.vx = moveX * PLAYER_SPEED;
-            state.player.vy = moveY * PLAYER_SPEED;
+            const magnitude = Math.hypot(moveX, moveY);
+            if (magnitude > 0) {
+                const normX = moveX / magnitude;
+                const normY = moveY / magnitude;
+
+                const lerp = 1 - Math.exp(-dt * AIM_LERP_RATE);
+                state.player.facingX = (1 - lerp) * state.player.facingX + lerp * normX;
+                state.player.facingY = (1 - lerp) * state.player.facingY + lerp * normY;
+                const facingMag = Math.hypot(state.player.facingX, state.player.facingY);
+                if (facingMag > 0) {
+                    state.player.facingX /= facingMag;
+                    state.player.facingY /= facingMag;
+                } else {
+                    state.player.facingX = normX;
+                    state.player.facingY = normY;
+                }
+
+                state.player.vx = normX * PLAYER_SPEED;
+                state.player.vy = normY * PLAYER_SPEED;
+            } else {
+                state.player.vx = 0;
+                state.player.vy = 0;
+            }
 
             state.player.x += state.player.vx * dt;
             state.player.y += state.player.vy * dt;
@@ -262,16 +710,23 @@
 
         function shoot() {
             const now = performance.now();
-            if (now - state.lastShotTime < SHOOT_COOLDOWN || !state.running) {
+            if (now - state.lastShotTime < SHOOT_COOLDOWN || !state.running || state.paused) {
                 return;
             }
             state.lastShotTime = now;
 
-            const dirX = state.player.facingX || 0;
-            const dirY = state.player.facingY || -1;
-            const length = Math.hypot(dirX, dirY) || 1;
-            const normX = dirX / length;
-            const normY = dirY / length;
+            let dirX = state.player.facingX;
+            let dirY = state.player.facingY;
+            let length = Math.hypot(dirX, dirY);
+            if (!Number.isFinite(length) || length < 1e-4) {
+                dirX = 0;
+                dirY = -1;
+                length = 1;
+            }
+            let normX = dirX / length;
+            let normY = dirY / length;
+            if (Math.abs(normX) < 1e-3) normX = 0;
+            if (Math.abs(normY) < 1e-3) normY = 0;
 
             const speed = Number(bulletSpeedSlider.value);
             const bullet = {
@@ -300,6 +755,7 @@
 
         function updateEnemies(dt) {
             const inertia = Number(inertiaSlider.value);
+            const attraction = Number(attractionSlider ? attractionSlider.value : 0);
             const TAU = Math.PI * 2;
 
             for (const enemy of state.enemies) {
@@ -313,6 +769,23 @@
                 const speedMag = Math.hypot(enemy.vx, enemy.vy);
                 if (speedMag > 0) {
                     const scale = enemy.baseSpeed / speedMag;
+                    enemy.vx *= scale;
+                    enemy.vy *= scale;
+                }
+
+                if (attraction > 0 && state.player) {
+                    const toPlayerX = state.player.x - enemy.x;
+                    const toPlayerY = state.player.y - enemy.y;
+                    const toPlayerDist = Math.hypot(toPlayerX, toPlayerY) || 1;
+                    const chaseVX = (toPlayerX / toPlayerDist) * enemy.baseSpeed;
+                    const chaseVY = (toPlayerY / toPlayerDist) * enemy.baseSpeed;
+                    enemy.vx = (1 - attraction) * enemy.vx + attraction * chaseVX;
+                    enemy.vy = (1 - attraction) * enemy.vy + attraction * chaseVY;
+                }
+
+                const finalSpeed = Math.hypot(enemy.vx, enemy.vy);
+                if (finalSpeed > 0) {
+                    const scale = enemy.baseSpeed / finalSpeed;
                     enemy.vx *= scale;
                     enemy.vy *= scale;
                 }
@@ -367,7 +840,7 @@
                     state.player.invulnerable = PLAYER_INVULNERABLE_TIME;
                     updateScore();
                     setStatus("Colisão! Cuidado...", 1000);
-                    if (state.hits >= 3) {
+                    if (state.hits >= MAX_LIVES) {
                         endGame(false);
                     }
                     break;
@@ -377,6 +850,7 @@
 
         function endGame(win) {
             state.running = false;
+            resetTouchMovement();
             if (win) {
                 setStatus("Você venceu! Reiniciando...", 1800);
             } else {
@@ -384,6 +858,7 @@
             }
             if (!state.pendingReset) {
                 state.pendingReset = true;
+                updatePauseButton();
                 setTimeout(() => resetGame(), 1800);
             }
         }
@@ -436,7 +911,7 @@
                 ctx.restore();
             }
 
-            if (!state.running && state.pendingReset) {
+            if (state.paused || (!state.running && state.pendingReset)) {
                 ctx.save();
                 ctx.fillStyle = "rgba(11,15,26,0.6)";
                 ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -444,7 +919,8 @@
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.font = "bold 32px 'Segoe UI'";
-                ctx.fillText(state.statusMessage, GAME_WIDTH / 2, GAME_HEIGHT / 2);
+                const overlayMessage = state.paused ? (state.statusMessage || "Jogo pausado") : state.statusMessage;
+                ctx.fillText(overlayMessage, GAME_WIDTH / 2, GAME_HEIGHT / 2);
                 ctx.restore();
             }
         }
@@ -457,14 +933,15 @@
             const dt = Math.min(deltaMs / 1000, 0.05);
             state.lastFrame = timestamp;
 
-            if (state.statusTimer > 0) {
+            if (state.statusTimer > 0 && Number.isFinite(state.statusTimer)) {
                 state.statusTimer -= deltaMs;
                 if (state.statusTimer <= 0) {
+                    state.statusTimer = 0;
                     statusEl.textContent = "";
                 }
             }
 
-            if (state.running) {
+            if (state.running && !state.paused) {
                 handleInput(dt);
                 updateBullets(dt);
                 updateEnemies(dt);
@@ -483,9 +960,19 @@
             if (event.code === "Space") {
                 event.preventDefault();
                 shoot();
-            } else {
-                keysDown.add(event.code);
+                return;
             }
+            if (event.code === "Escape" || event.code === "KeyP") {
+                if (!event.repeat) {
+                    event.preventDefault();
+                    togglePause();
+                }
+                return;
+            }
+            if (state.paused || !state.running) {
+                return;
+            }
+            keysDown.add(event.code);
         });
 
         window.addEventListener("keyup", (event) => {
@@ -499,9 +986,17 @@
         inertiaSlider.addEventListener("input", () => {
             inertiaValue.textContent = Number(inertiaSlider.value).toFixed(2);
         });
+        if (attractionSlider && attractionValue) {
+            attractionSlider.addEventListener("input", () => {
+                attractionValue.textContent = Number(attractionSlider.value).toFixed(2);
+            });
+        }
 
         bulletSpeedValue.textContent = bulletSpeedSlider.value;
         inertiaValue.textContent = Number(inertiaSlider.value).toFixed(2);
+        if (attractionSlider && attractionValue) {
+            attractionValue.textContent = Number(attractionSlider.value).toFixed(2);
+        }
 
         resetGame("Prepare-se!");
         requestAnimationFrame(loop);
