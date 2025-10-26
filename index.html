@@ -75,6 +75,44 @@
             font-weight: 600;
             letter-spacing: 0.05em;
         }
+        .touch-controls {
+            display: grid;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            justify-items: center;
+        }
+        .touch-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .touch-btn {
+            width: 72px;
+            height: 72px;
+            border-radius: 16px;
+            border: none;
+            background: rgba(255,255,255,0.12);
+            color: var(--text);
+            font-size: 1.6rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+            backdrop-filter: blur(4px);
+            touch-action: manipulation;
+            user-select: none;
+            cursor: pointer;
+            transition: transform 0.08s ease, background 0.12s ease;
+        }
+        .touch-btn.fire {
+            background: rgba(255,107,107,0.22);
+            color: var(--danger);
+        }
+        .touch-btn:active,
+        .touch-btn.active {
+            transform: translateY(2px);
+            background: rgba(255,255,255,0.28);
+        }
         footer {
             margin-top: 2rem;
             font-size: 0.9rem;
@@ -88,7 +126,7 @@
 <body>
     <header>
         <h1>Space Brownian Battle</h1>
-        <p>Use as setas para mover a nave; a barra de espaço dispara. Derrube as 5 naves inimigas antes de sofrer 3 colisões.</p>
+        <p>Use as setas ou os botões abaixo para mover a nave; a barra de espaço ou o botão de fogo dispara. Derrube as 5 naves inimigas antes de sofrer 3 colisões.</p>
     </header>
 
     <section class="hud">
@@ -111,6 +149,19 @@
     </section>
 
     <canvas id="game" width="800" height="600"></canvas>
+    <div class="touch-controls" id="touchControls">
+        <div class="touch-row">
+            <button type="button" class="touch-btn" data-key="ArrowUp" aria-label="Mover para cima">Cima</button>
+        </div>
+        <div class="touch-row">
+            <button type="button" class="touch-btn" data-key="ArrowLeft" aria-label="Mover para a esquerda">Esq</button>
+            <button type="button" class="touch-btn fire" data-key="Space" aria-label="Atirar">Fogo</button>
+            <button type="button" class="touch-btn" data-key="ArrowRight" aria-label="Mover para a direita">Dir</button>
+        </div>
+        <div class="touch-row">
+            <button type="button" class="touch-btn" data-key="ArrowDown" aria-label="Mover para baixo">Baixo</button>
+        </div>
+    </div>
     <div class="status" id="status"></div>
 
     <footer>
@@ -146,6 +197,69 @@
         const PLAYER_INVULNERABLE_TIME = 1200; // ms after hit
 
         const keysDown = new Set();
+        const touchControls = document.getElementById("touchControls");
+        const activeTouchPointers = new Map();
+
+        function pressVirtualKey(key) {
+            if (key === "Space") {
+                shoot();
+            } else {
+                keysDown.add(key);
+            }
+        }
+
+        function releaseVirtualKey(key) {
+            if (key !== "Space") {
+                keysDown.delete(key);
+            }
+        }
+
+        if (touchControls) {
+            const virtualButtons = Array.from(touchControls.querySelectorAll("[data-key]"));
+
+            const handleRelease = (event) => {
+                const active = activeTouchPointers.get(event.pointerId);
+                if (!active) {
+                    return;
+                }
+                releaseVirtualKey(active.key);
+                active.button.classList.remove("active");
+                activeTouchPointers.delete(event.pointerId);
+            };
+
+            virtualButtons.forEach((button) => {
+                const key = button.dataset.key;
+
+                button.addEventListener("pointerdown", (event) => {
+                    event.preventDefault();
+                    if (button.setPointerCapture) {
+                        try {
+                            button.setPointerCapture(event.pointerId);
+                        } catch (_) {
+                            // Ignora capturas não suportadas.
+                        }
+                    }
+                    activeTouchPointers.set(event.pointerId, { key, button });
+                    pressVirtualKey(key);
+                    button.classList.add("active");
+                });
+
+                button.addEventListener("pointerup", handleRelease);
+                button.addEventListener("pointercancel", handleRelease);
+                button.addEventListener("lostpointercapture", handleRelease);
+                button.addEventListener("pointerleave", (event) => {
+                    if (button.hasPointerCapture && button.hasPointerCapture(event.pointerId)) {
+                        return;
+                    }
+                    handleRelease(event);
+                });
+                button.addEventListener("contextmenu", (event) => event.preventDefault());
+                button.addEventListener("click", (event) => event.preventDefault());
+            });
+
+            window.addEventListener("pointerup", handleRelease);
+            window.addEventListener("pointercancel", handleRelease);
+        }
 
         const state = {
             player: null,
