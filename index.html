@@ -161,6 +161,16 @@
             height: 184px;
             border-radius: 32px;
         }
+        .touch-btn .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
         .touch-btn:active,
         .touch-btn.active {
             transform: translateY(2px);
@@ -235,7 +245,7 @@
 <body>
     <header>
         <h1>Space Brownian Battle</h1>
-        <p>Use as setas do teclado ou arraste o joystick à direita para mover a nave; a barra de espaço ou o botão Atirar dispara. Toque em Pausar para interromper e retomar a partida. Derrube as 5 naves inimigas antes de sofrer 3 colisões.</p>
+        <p>Use as setas do teclado ou arraste o joystick à direita para mover a nave; a barra de espaço ou o botão Atirar dispara. Ajuste a inércia e a atração inimiga nos controles para moldar o comportamento das naves adversárias. Derrube as 5 naves inimigas antes de sofrer 3 colisões.</p>
     </header>
 
     <section class="hud">
@@ -254,6 +264,11 @@
                 Inércia inimiga
                 <input type="range" id="inertia" min="0" max="1" step="0.05" value="0.8">
                 <span id="inertiaValue">0.80</span>
+            </label>
+            <label>
+                Atração inimiga
+                <input type="range" id="attraction" min="0" max="1" step="0.05" value="0">
+                <span id="attractionValue">0.00</span>
             </label>
         </div>
     </section>
@@ -292,6 +307,8 @@
         const bulletSpeedValue = document.getElementById("bulletSpeedValue");
         const inertiaSlider = document.getElementById("inertia");
         const inertiaValue = document.getElementById("inertiaValue");
+        const attractionSlider = document.getElementById("attraction");
+        const attractionValue = document.getElementById("attractionValue");
         const pauseToggle = document.getElementById("pauseToggle");
         const joystick = document.getElementById("touchJoystick");
         const joystickThumb = document.getElementById("joystickThumb");
@@ -306,6 +323,7 @@
         const ENEMY_COUNT = 5;
         const ENEMY_RADIUS = 20;
         const ENEMY_BASE_SPEED = 120;
+        const AIM_LERP_RATE = 14;
 
         const BULLET_RADIUS = 4;
         const SHOOT_COOLDOWN = 180; // ms
@@ -654,16 +672,29 @@
                 moveY += touchMovement.y;
             }
 
-            if (moveX !== 0 || moveY !== 0) {
-                const mag = Math.hypot(moveX, moveY);
-                moveX /= mag;
-                moveY /= mag;
-                state.player.facingX = moveX;
-                state.player.facingY = moveY;
-            }
+            const magnitude = Math.hypot(moveX, moveY);
+            if (magnitude > 0) {
+                const normX = moveX / magnitude;
+                const normY = moveY / magnitude;
 
-            state.player.vx = moveX * PLAYER_SPEED;
-            state.player.vy = moveY * PLAYER_SPEED;
+                const lerp = 1 - Math.exp(-dt * AIM_LERP_RATE);
+                state.player.facingX = (1 - lerp) * state.player.facingX + lerp * normX;
+                state.player.facingY = (1 - lerp) * state.player.facingY + lerp * normY;
+                const facingMag = Math.hypot(state.player.facingX, state.player.facingY);
+                if (facingMag > 0) {
+                    state.player.facingX /= facingMag;
+                    state.player.facingY /= facingMag;
+                } else {
+                    state.player.facingX = normX;
+                    state.player.facingY = normY;
+                }
+
+                state.player.vx = normX * PLAYER_SPEED;
+                state.player.vy = normY * PLAYER_SPEED;
+            } else {
+                state.player.vx = 0;
+                state.player.vy = 0;
+            }
 
             state.player.x += state.player.vx * dt;
             state.player.y += state.player.vy * dt;
@@ -683,11 +714,18 @@
             }
             state.lastShotTime = now;
 
-            const dirX = state.player.facingX || 0;
-            const dirY = state.player.facingY || -1;
-            const length = Math.hypot(dirX, dirY) || 1;
-            const normX = dirX / length;
-            const normY = dirY / length;
+            let dirX = state.player.facingX;
+            let dirY = state.player.facingY;
+            let length = Math.hypot(dirX, dirY);
+            if (!Number.isFinite(length) || length < 1e-4) {
+                dirX = 0;
+                dirY = -1;
+                length = 1;
+            }
+            let normX = dirX / length;
+            let normY = dirY / length;
+            if (Math.abs(normX) < 1e-3) normX = 0;
+            if (Math.abs(normY) < 1e-3) normY = 0;
 
             const speed = Number(bulletSpeedSlider.value);
             const bullet = {
@@ -716,6 +754,7 @@
 
         function updateEnemies(dt) {
             const inertia = Number(inertiaSlider.value);
+            const attraction = Number(attractionSlider ? attractionSlider.value : 0);
             const TAU = Math.PI * 2;
 
             for (const enemy of state.enemies) {
@@ -729,6 +768,23 @@
                 const speedMag = Math.hypot(enemy.vx, enemy.vy);
                 if (speedMag > 0) {
                     const scale = enemy.baseSpeed / speedMag;
+                    enemy.vx *= scale;
+                    enemy.vy *= scale;
+                }
+
+                if (attraction > 0 && state.player) {
+                    const toPlayerX = state.player.x - enemy.x;
+                    const toPlayerY = state.player.y - enemy.y;
+                    const toPlayerDist = Math.hypot(toPlayerX, toPlayerY) || 1;
+                    const chaseVX = (toPlayerX / toPlayerDist) * enemy.baseSpeed;
+                    const chaseVY = (toPlayerY / toPlayerDist) * enemy.baseSpeed;
+                    enemy.vx = (1 - attraction) * enemy.vx + attraction * chaseVX;
+                    enemy.vy = (1 - attraction) * enemy.vy + attraction * chaseVY;
+                }
+
+                const finalSpeed = Math.hypot(enemy.vx, enemy.vy);
+                if (finalSpeed > 0) {
+                    const scale = enemy.baseSpeed / finalSpeed;
                     enemy.vx *= scale;
                     enemy.vy *= scale;
                 }
@@ -929,22 +985,20 @@
         inertiaSlider.addEventListener("input", () => {
             inertiaValue.textContent = Number(inertiaSlider.value).toFixed(2);
         });
+        if (attractionSlider && attractionValue) {
+            attractionSlider.addEventListener("input", () => {
+                attractionValue.textContent = Number(attractionSlider.value).toFixed(2);
+            });
+        }
 
         bulletSpeedValue.textContent = bulletSpeedSlider.value;
         inertiaValue.textContent = Number(inertiaSlider.value).toFixed(2);
+        if (attractionSlider && attractionValue) {
+            attractionValue.textContent = Number(attractionSlider.value).toFixed(2);
+        }
 
         resetGame("Prepare-se!");
         requestAnimationFrame(loop);
     </script>
 </body>
 </html>
-        .touch-btn .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
-        }
