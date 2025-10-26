@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <title>Space Brownian Battle</title>
     <style>
         :root {
@@ -12,6 +13,10 @@
             --accent: #2c7be5;
             --danger: #ff6b6b;
             --success: #51cf66;
+        }
+        html {
+            width: 100%;
+            overflow-x: hidden;
         }
         body {
             margin: 0;
@@ -24,6 +29,11 @@
             min-height: 100vh;
             padding: 1.5rem;
             box-sizing: border-box;
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
         header, footer {
             max-width: 900px;
@@ -150,7 +160,6 @@
             width: 96px;
             height: 184px;
             border-radius: 32px;
-            font-size: 1.3rem;
         }
         .touch-btn:active,
         .touch-btn.active {
@@ -254,7 +263,9 @@
         <button type="button" class="pause-btn" id="pauseToggle" aria-pressed="false">Pausar</button>
         <div class="touch-controls" id="touchControls">
             <div class="touch-fire">
-                <button type="button" class="touch-btn fire" data-key="Space" aria-label="Atirar">Atirar</button>
+                <button type="button" class="touch-btn fire" data-key="Space" aria-label="Atirar">
+                    <span class="sr-only">Atirar</span>
+                </button>
             </div>
             <div class="touch-joystick" id="touchJoystick" aria-label="Direcional por arrasto">
                 <div class="joystick-base">
@@ -927,3 +938,13 @@
     </script>
 </body>
 </html>
+        .touch-btn .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
