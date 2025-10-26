@@ -75,24 +75,51 @@
             font-weight: 600;
             letter-spacing: 0.05em;
         }
-        .touch-controls {
-            display: grid;
-            gap: 0.5rem;
-            margin-top: 1rem;
-            justify-items: center;
-        }
-        .touch-row {
+        .touch-ui {
             display: flex;
-            gap: 0.5rem;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 1.25rem;
+            width: 100%;
+            max-width: 900px;
+        }
+        .touch-controls {
+            display: flex;
+            justify-content: space-between;
+            gap: 1.5rem;
+            width: 100%;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            padding: 0 0.5rem;
+        }
+        .touch-fire {
+            display: flex;
+            align-items: center;
+        }
+        .touch-dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 84px);
+            grid-template-rows: repeat(3, 84px);
+            gap: 0.4rem;
+            justify-content: center;
+            align-content: center;
+            margin-left: auto;
+        }
+        .touch-dpad .spacer {
+            width: 84px;
+            height: 84px;
+            pointer-events: none;
+            visibility: hidden;
         }
         .touch-btn {
-            width: 72px;
-            height: 72px;
-            border-radius: 16px;
+            width: 84px;
+            height: 84px;
+            border-radius: 20px;
             border: none;
             background: rgba(255,255,255,0.12);
             color: var(--text);
-            font-size: 1.6rem;
+            font-size: 1.2rem;
             font-weight: 700;
             display: flex;
             align-items: center;
@@ -105,13 +132,75 @@
             transition: transform 0.08s ease, background 0.12s ease;
         }
         .touch-btn.fire {
-            background: rgba(255,107,107,0.22);
+            background: linear-gradient(180deg, rgba(255,107,107,0.4), rgba(255,107,107,0.1));
             color: var(--danger);
+            width: 96px;
+            height: 184px;
+            border-radius: 32px;
+            font-size: 1.3rem;
         }
         .touch-btn:active,
         .touch-btn.active {
             transform: translateY(2px);
             background: rgba(255,255,255,0.28);
+        }
+        .pause-btn {
+            align-self: flex-end;
+            padding: 0.6rem 1.2rem;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 999px;
+            color: var(--text);
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: background 0.12s ease, transform 0.08s ease;
+        }
+        .pause-btn:active {
+            transform: translateY(2px);
+            background: rgba(255,255,255,0.28);
+        }
+        .pause-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            .touch-controls {
+                gap: 1rem;
+            }
+            .touch-fire {
+                flex: 1;
+                justify-content: flex-start;
+            }
+            .touch-dpad {
+                grid-template-columns: repeat(3, 72px);
+                grid-template-rows: repeat(3, 72px);
+                gap: 0.35rem;
+            }
+            .touch-dpad .spacer {
+                width: 72px;
+                height: 72px;
+            }
+            .touch-btn {
+                width: 72px;
+                height: 72px;
+                border-radius: 18px;
+                font-size: 1.1rem;
+            }
+            .touch-btn.fire {
+                width: 88px;
+                height: 160px;
+                border-radius: 28px;
+            }
+            .pause-btn {
+                width: 100%;
+                text-align: center;
+                align-self: center;
+            }
         }
         footer {
             margin-top: 2rem;
@@ -126,7 +215,7 @@
 <body>
     <header>
         <h1>Space Brownian Battle</h1>
-        <p>Use as setas ou os botões abaixo para mover a nave; a barra de espaço ou o botão de fogo dispara. Derrube as 5 naves inimigas antes de sofrer 3 colisões.</p>
+        <p>Use as setas do teclado ou o direcional à direita para mover a nave; a barra de espaço ou o botão Atirar dispara. Toque em Pausar para interromper e retomar a partida. Derrube as 5 naves inimigas antes de sofrer 3 colisões.</p>
     </header>
 
     <section class="hud">
@@ -149,17 +238,23 @@
     </section>
 
     <canvas id="game" width="800" height="600"></canvas>
-    <div class="touch-controls" id="touchControls">
-        <div class="touch-row">
-            <button type="button" class="touch-btn" data-key="ArrowUp" aria-label="Mover para cima">Cima</button>
-        </div>
-        <div class="touch-row">
-            <button type="button" class="touch-btn" data-key="ArrowLeft" aria-label="Mover para a esquerda">Esq</button>
-            <button type="button" class="touch-btn fire" data-key="Space" aria-label="Atirar">Fogo</button>
-            <button type="button" class="touch-btn" data-key="ArrowRight" aria-label="Mover para a direita">Dir</button>
-        </div>
-        <div class="touch-row">
-            <button type="button" class="touch-btn" data-key="ArrowDown" aria-label="Mover para baixo">Baixo</button>
+    <div class="touch-ui">
+        <button type="button" class="pause-btn" id="pauseToggle" aria-pressed="false">Pausar</button>
+        <div class="touch-controls" id="touchControls">
+            <div class="touch-fire">
+                <button type="button" class="touch-btn fire" data-key="Space" aria-label="Atirar">Atirar</button>
+            </div>
+            <div class="touch-dpad">
+                <div class="spacer" aria-hidden="true"></div>
+                <button type="button" class="touch-btn" data-key="ArrowUp" aria-label="Mover para cima">&#9650;</button>
+                <div class="spacer" aria-hidden="true"></div>
+                <button type="button" class="touch-btn" data-key="ArrowLeft" aria-label="Mover para a esquerda">&#9664;</button>
+                <div class="spacer" aria-hidden="true"></div>
+                <button type="button" class="touch-btn" data-key="ArrowRight" aria-label="Mover para a direita">&#9654;</button>
+                <div class="spacer" aria-hidden="true"></div>
+                <button type="button" class="touch-btn" data-key="ArrowDown" aria-label="Mover para baixo">&#9660;</button>
+                <div class="spacer" aria-hidden="true"></div>
+            </div>
         </div>
     </div>
     <div class="status" id="status"></div>
@@ -179,6 +274,7 @@
         const bulletSpeedValue = document.getElementById("bulletSpeedValue");
         const inertiaSlider = document.getElementById("inertia");
         const inertiaValue = document.getElementById("inertiaValue");
+        const pauseToggle = document.getElementById("pauseToggle");
 
         const GAME_WIDTH = canvas.width;
         const GAME_HEIGHT = canvas.height;
@@ -199,8 +295,25 @@
         const keysDown = new Set();
         const touchControls = document.getElementById("touchControls");
         const activeTouchPointers = new Map();
+        const state = {
+            player: null,
+            bullets: [],
+            enemies: [],
+            score: 0,
+            hits: 0,
+            lastShotTime: 0,
+            lastFrame: null,
+            statusTimer: 0,
+            statusMessage: "",
+            running: true,
+            pendingReset: false,
+            paused: false
+        };
 
         function pressVirtualKey(key) {
+            if (state.paused || !state.running) {
+                return;
+            }
             if (key === "Space") {
                 shoot();
             } else {
@@ -231,7 +344,12 @@
                 const key = button.dataset.key;
 
                 button.addEventListener("pointerdown", (event) => {
-                    event.preventDefault();
+                    if (event.pointerType !== "mouse") {
+                        event.preventDefault();
+                    }
+                    if (state.paused || !state.running) {
+                        return;
+                    }
                     if (button.setPointerCapture) {
                         try {
                             button.setPointerCapture(event.pointerId);
@@ -239,9 +357,11 @@
                             // Ignora capturas não suportadas.
                         }
                     }
-                    activeTouchPointers.set(event.pointerId, { key, button });
-                    pressVirtualKey(key);
-                    button.classList.add("active");
+                    if (!activeTouchPointers.has(event.pointerId)) {
+                        activeTouchPointers.set(event.pointerId, { key, button });
+                        pressVirtualKey(key);
+                        button.classList.add("active");
+                    }
                 });
 
                 button.addEventListener("pointerup", handleRelease);
@@ -260,20 +380,6 @@
             window.addEventListener("pointerup", handleRelease);
             window.addEventListener("pointercancel", handleRelease);
         }
-
-        const state = {
-            player: null,
-            bullets: [],
-            enemies: [],
-            score: 0,
-            hits: 0,
-            lastShotTime: 0,
-            lastFrame: null,
-            statusTimer: 0,
-            statusMessage: "",
-            running: true,
-            pendingReset: false
-        };
 
         function clamp(value, min, max) {
             return Math.max(min, Math.min(max, value));
@@ -322,6 +428,8 @@
             state.lastShotTime = 0;
             state.running = true;
             state.pendingReset = false;
+            state.paused = false;
+            updatePauseButton();
             updateScore();
             setStatus(message);
         }
@@ -341,6 +449,54 @@
             state.statusMessage = message;
             state.statusTimer = duration;
             statusEl.textContent = message;
+        }
+
+        function updatePauseButton() {
+            if (!pauseToggle) {
+                return;
+            }
+            pauseToggle.textContent = state.paused ? "Retomar" : "Pausar";
+            pauseToggle.setAttribute("aria-pressed", state.paused ? "true" : "false");
+            pauseToggle.disabled = state.pendingReset;
+        }
+
+        function setPaused(paused) {
+            if (state.pendingReset) {
+                return;
+            }
+            if (state.paused === paused) {
+                return;
+            }
+            state.paused = paused;
+            if (paused) {
+                keysDown.clear();
+                activeTouchPointers.forEach(({ key, button }) => {
+                    releaseVirtualKey(key);
+                    if (button) {
+                        button.classList.remove("active");
+                    }
+                });
+                activeTouchPointers.clear();
+                setStatus("Jogo pausado", Number.POSITIVE_INFINITY);
+            } else {
+                state.lastFrame = null;
+                setStatus("Batalha retomada!", 800);
+            }
+            updatePauseButton();
+        }
+
+        function togglePause() {
+            if (!state.running && !state.paused) {
+                return;
+            }
+            setPaused(!state.paused);
+        }
+
+        if (pauseToggle) {
+            pauseToggle.addEventListener("click", (event) => {
+                event.preventDefault();
+                togglePause();
+            });
         }
 
         function handleInput(dt) {
@@ -376,7 +532,7 @@
 
         function shoot() {
             const now = performance.now();
-            if (now - state.lastShotTime < SHOOT_COOLDOWN || !state.running) {
+            if (now - state.lastShotTime < SHOOT_COOLDOWN || !state.running || state.paused) {
                 return;
             }
             state.lastShotTime = now;
@@ -498,6 +654,7 @@
             }
             if (!state.pendingReset) {
                 state.pendingReset = true;
+                updatePauseButton();
                 setTimeout(() => resetGame(), 1800);
             }
         }
@@ -550,7 +707,7 @@
                 ctx.restore();
             }
 
-            if (!state.running && state.pendingReset) {
+            if (state.paused || (!state.running && state.pendingReset)) {
                 ctx.save();
                 ctx.fillStyle = "rgba(11,15,26,0.6)";
                 ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -558,7 +715,8 @@
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.font = "bold 32px 'Segoe UI'";
-                ctx.fillText(state.statusMessage, GAME_WIDTH / 2, GAME_HEIGHT / 2);
+                const overlayMessage = state.paused ? (state.statusMessage || "Jogo pausado") : state.statusMessage;
+                ctx.fillText(overlayMessage, GAME_WIDTH / 2, GAME_HEIGHT / 2);
                 ctx.restore();
             }
         }
@@ -571,14 +729,15 @@
             const dt = Math.min(deltaMs / 1000, 0.05);
             state.lastFrame = timestamp;
 
-            if (state.statusTimer > 0) {
+            if (state.statusTimer > 0 && Number.isFinite(state.statusTimer)) {
                 state.statusTimer -= deltaMs;
                 if (state.statusTimer <= 0) {
+                    state.statusTimer = 0;
                     statusEl.textContent = "";
                 }
             }
 
-            if (state.running) {
+            if (state.running && !state.paused) {
                 handleInput(dt);
                 updateBullets(dt);
                 updateEnemies(dt);
@@ -597,9 +756,19 @@
             if (event.code === "Space") {
                 event.preventDefault();
                 shoot();
-            } else {
-                keysDown.add(event.code);
+                return;
             }
+            if (event.code === "Escape" || event.code === "KeyP") {
+                if (!event.repeat) {
+                    event.preventDefault();
+                    togglePause();
+                }
+                return;
+            }
+            if (state.paused || !state.running) {
+                return;
+            }
+            keysDown.add(event.code);
         });
 
         window.addEventListener("keyup", (event) => {
